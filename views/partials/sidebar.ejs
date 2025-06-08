@@ -1,0 +1,94 @@
+<!-- Sidebar -->
+<div class="sidebar">
+    <h4 class="text-center py-3">
+        <%= user.role === 'cashier' ? 'Cashier Panel' : 'Admin Panel' %>
+    </h4>
+    <ul class="list-unstyled px-2">
+
+        <li>
+            <a href="/dashboard" class="text-dark text-decoration-none d-block py-2">
+                <i class="fa fa-tachometer-alt"></i><span> Dashboard</span>
+            </a>
+        </li>
+
+        <% if (user.role === 'admin') { %>
+        <li>
+            <a href="/categories" class="text-dark text-decoration-none d-block py-2">
+                <i class="fa fa-tags"></i><span> Categories</span>
+            </a>
+        </li> 
+        <% } %>
+
+        <% if (user.role === 'admin') { %>
+        <li class="dropdown">
+            <a href="#" class="text-dark text-decoration-none d-block py-2 dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="fa fa-boxes"></i><span> Products Management</span>
+            </a>
+            <ul class="dropdown-menu">
+                <li>
+                    <a class="dropdown-item" href="/product_batches">
+                        <i class="fa fa-layer-group"></i> Products Batches
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="/products">
+                        <i class="fa fa-box"></i> Products
+                    </a>
+                </li>
+            </ul>
+        </li>
+        <% } %>
+
+        <% if (user.role === 'admin' || user.role === 'cashier') { %>
+        <li class="dropdown">
+            <a href="#" class="text-dark text-decoration-none d-block py-2 dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="fa fa-exchange-alt"></i> <span> Transactions Management</span>
+            </a>
+            <ul class="dropdown-menu">
+                <li>
+                    <a class="dropdown-item" href="/transactions">
+                        <i class="fa fa-receipt"></i> Transactions
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="/transaction_items">
+                        <i class="fa fa-box-open"></i> Transaction Items
+                    </a>
+                </li>
+            </ul>
+        </li>
+        <% } %>
+
+        <% if (user.role === 'admin') { %>
+        <li>
+            <a href="/units" class="text-dark text-decoration-none d-block py-2">
+                <i class="fa fa-cube"></i><span> Units</span>
+            </a>
+        </li>
+        <% } %>
+
+        <li>
+            <a href="/users_pos" class="text-dark text-decoration-none d-block py-2">
+                <i class="fa fa-users"></i><span> Users</span>
+            </a>
+        </li>
+
+        <% if (user.role === 'admin') { %>
+        <li class="dropdown">
+            <a href="#" class="text-dark text-decoration-none d-block py-2 dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="fa fa-cogs"></i><span> Settings</span>
+            </a>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">General Settings</a></li>
+                <li><a class="dropdown-item" href="#">User Management</a></li>
+            </ul>
+        </li>
+        <% } %>
+
+        <li>
+            <a href="/logout" class="text-danger text-decoration-none d-block py-2">
+                <i class="fa fa-sign-out"></i><span> Logout</span>
+            </a>
+        </li>
+    </ul>
+</div>
