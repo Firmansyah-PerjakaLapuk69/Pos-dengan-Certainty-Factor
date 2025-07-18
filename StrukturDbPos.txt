@@ -1,0 +1,201 @@
+-- 1. USERS
+CREATE TABLE users_pos_new (
+    id_users VARCHAR(20) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(20) CHECK (role IN ('admin', 'cashier')),
+    users_img VARCHAR(255) DEFAULT 'default.png',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE users_pos
+ADD COLUMN reset_token TEXT,
+ADD COLUMN reset_token_expires TIMESTAMP;
+
+-- 2. CATEGORIES
+CREATE TABLE categories (
+    id_categories VARCHAR(20) PRIMARY KEY,  -- Format: CYYYYMMDD0001
+    name VARCHAR(50) NOT NULL
+);
+
+-- 3. CREATE TABLE units (
+    id_units VARCHAR(20) PRIMARY KEY,        -- Format: UYYYYMMDD0001
+    name VARCHAR(50) NOT NULL UNIQUE
+);
+
+-- 4. PRODUCTS
+CREATE TABLE products (
+    id_products VARCHAR(20) PRIMARY KEY,  -- Format: PYYYYMMDD0001
+    name VARCHAR(100) NOT NULL,
+    barcode VARCHAR(50) UNIQUE,
+    category_id VARCHAR(20) REFERENCES categories(id_categories),
+    brand VARCHAR(50),
+    description TEXT,
+    unit_id VARCHAR(20) REFERENCES units(id_units), -- Foreign key ke tabel units
+    product_image TEXT,
+    status SMALLINT DEFAULT 1 CHECK (status IN (0, 1)),  -- 1 = aktif, 0 = nonaktif
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. PRODUCT BATCHES
+CREATE TABLE product_batches (
+    id_product_batches VARCHAR(20) PRIMARY KEY,  -- Format: BYYYYMMDD0001
+    product_id VARCHAR(20) REFERENCES products(id_products),
+    batch_number VARCHAR(50) NOT NULL,
+    expiry_date DATE NOT NULL,
+    stock INT DEFAULT 0,
+    purchaseprice INT NOT NULL,  
+    SellingPrice INT NOT NULL,   
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6. TRANSACTIONS
+CREATE TABLE transactions (
+    id_transactions VARCHAR(20) PRIMARY KEY,  -- Format: TYYYYMMDD0001
+    user_id VARCHAR(20) REFERENCES users_pos(id_users),
+    total_price DECIMAL(10,2),
+    payment_amount DECIMAL(10,2),
+    change_amount DECIMAL(10,2),
+    status VARCHAR(20) DEFAULT 'paid',
+    payment_method VARCHAR(30),
+    customer_phone VARCHAR(20);
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 7. TRANSACTION ITEMS
+CREATE TABLE transaction_items (
+    id_transaction VARCHAR(20),
+    product_id VARCHAR(20),
+    batch_id VARCHAR(20),
+    quantity INT NOT NULL CHECK (quantity > 0),
+    price DECIMAL(10,2) CHECK (price >= 0),
+    discount_amount DECIMAL(10,2) DEFAULT 0
+    subtotal DECIMAL(10,2) CHECK (subtotal >= 0),
+    discount_amount DECIMAL(10,2) DEFAULT 0,
+    PRIMARY KEY (id_transaction, product_id, batch_id),
+    FOREIGN KEY (id_transaction) REFERENCES transactions(id_transactions) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id_products),
+    FOREIGN KEY (batch_id) REFERENCES product_batches(id_product_batches)
+);
+
+CREATE TABLE expert_rules (
+  id SERIAL PRIMARY KEY,
+  rule_name TEXT,
+  condition_sold_min INT,
+  condition_sold_max INT,
+  condition_stock_min INT,
+  condition_stock_max INT,
+  certainty_factor NUMERIC(3,2),
+  recommendation TEXT
+);
+
+-- Buat function untuk hapus transaksi kadaluarsa
+CREATE OR REPLACE FUNCTION delete_expired_dummy_transactions()
+RETURNS void AS $$
+BEGIN
+  DELETE FROM transactions
+  WHERE 
+    total_price = 0 
+    AND status = 'unpaid'
+    AND created_at < NOW() - INTERVAL '24 hours';
+END;
+$$ LANGUAGE plpgsql;
+
+
+INSERT INTO users_pos (id_users, name, email, password, role) VALUES
+('U202505120001', 'Admin One', 'admin1@mail.com', 'pass1', 'admin'),
+('U202505120002', 'Cashier One', 'cashier1@mail.com', 'pass2', 'cashier'),
+('U202505120003', 'Admin Two', 'admin2@mail.com', 'pass3', 'admin'),
+('U202505120004', 'Cashier Two', 'cashier2@mail.com', 'pass4', 'cashier'),
+('U202505120005', 'Admin Three', 'admin3@mail.com', 'pass5', 'admin'),
+('U202505120006', 'Cashier Three', 'cashier3@mail.com', 'pass6', 'cashier'),
+('U202505120007', 'Admin Four', 'admin4@mail.com', 'pass7', 'admin'),
+('U202505120008', 'Cashier Four', 'cashier4@mail.com', 'pass8', 'cashier'),
+('U202505120009', 'Admin Five', 'admin5@mail.com', 'pass9', 'admin'),
+('U202505120010', 'Cashier Five', 'cashier5@mail.com', 'pass10', 'cashier');
+
+INSERT INTO categories (id_categories, name) VALUES
+('C202505120001', 'Elektronik'),
+('C202505120002', 'Pakaian'),
+('C202505120003', 'Makanan'),
+('C202505120004', 'Minuman'),
+('C202505120005', 'Kecantikan'),
+('C202505120006', 'Peralatan Rumah'),
+('C202505120007', 'Olahraga'),
+('C202505120008', 'Buku'),
+('C202505120009', 'Mainan'),
+('C202505120010', 'Aksesoris');
+
+INSERT INTO units (id_units, name) VALUES
+('U202505150001', 'Kotak'),
+('U202505150002', 'Strip'),
+('U202505150003', 'Tablet'),
+('U202505150004', 'Kapsul'),
+('U202505150005', 'Botol'),
+('U202505150006', 'Tube'),
+('U202505150007', 'Sachet'),
+('U202505150008', 'Ampul'),
+('U202505150009', 'Vial'),
+('U202505150010', 'Paket');
+
+INSERT INTO products (
+id_products, name, barcode, category_id, brand, description, unit_id, product_image, status, created_at
+) VALUES
+('P202505160001', 'Smartphone X200', '1234567890123', 'C202505120001', 'TechOne', 'Smartphone dengan layar AMOLED 6.5 inci.', 'U202505150001', NULL, 1, CURRENT_TIMESTAMP),
+('P202505160002', 'Kaos Polos Lengan Pendek', '2345678901234', 'C202505120002', 'FashionLine', 'Kaos nyaman berbahan katun 100%.', 'U202505150010', NULL, 1, CURRENT_TIMESTAMP),
+('P202505160003', 'Mi Instan Ayam Pedas', '3456789012345', 'C202505120003', 'RasaNikmat', 'Mi instan dengan rasa ayam pedas gurih.', 'U202505150007', NULL, 1, CURRENT_TIMESTAMP),
+('P202505160004', 'Air Mineral 600ml', '4567890123456', 'C202505120004', 'SegarAqua', 'Air mineral pegunungan dalam botol 600ml.', 'U202505150005', NULL, 1, CURRENT_TIMESTAMP),
+('P202505160005', 'Lipstik Matte Red Velvet', '5678901234567', 'C202505120005', 'BeautyGlow', 'Lipstik dengan warna merah velvet tahan lama.', 'U202505150006', NULL, 1, CURRENT_TIMESTAMP),
+('P202505160006', 'Set Pisau Dapur Stainless', '6789012345678', 'C202505120006', 'HomeTools', 'Set pisau dapur 5 in 1 dengan stainless steel.', 'U202505150001', NULL, 1, CURRENT_TIMESTAMP),
+('P202505160007', 'Bola Sepak Ukuran 5', '7890123456789', 'C202505120007', 'SportMax', 'Bola sepak standar FIFA ukuran 5.', 'U202505150001', NULL, 1, CURRENT_TIMESTAMP),
+('P202505160008', 'Novel Misteri - Lembah Sunyi', '8901234567890', 'C202505120008', 'PenaCipta', 'Novel genre misteri yang menegangkan.', 'U202505150010', NULL, 1, CURRENT_TIMESTAMP),
+('P202505160009', 'Mainan Robot Transform', '9012345678901', 'C202505120009', 'FunPlay', 'Robot mainan yang bisa berubah bentuk.', 'U202505150001', NULL, 1, CURRENT_TIMESTAMP),
+('P202505160010', 'Kalung Perak Elegan', '0123456789012', 'C202505120010', 'SilverShine', 'Kalung perak murni dengan desain elegan.', 'U202505150010', NULL, 1, CURRENT_TIMESTAMP);
+
+
+INSERT INTO product_batches (id_product_batches, product_id, batch_number, expiry_date, stock, purchase_price, selling_price, created_at) VALUES
+('PB202505180001', 'P202505160001', 'BX200-001', '2026-12-31', 50, 4500000, 5500000, CURRENT_TIMESTAMP),
+('PB202505180002', 'P202505160002', 'KPLP-001', '2027-01-15', 200, 25000, 40000, CURRENT_TIMESTAMP),
+('PB202505180003', 'P202505160003', 'MIP-001', '2026-05-01', 500, 2000, 3500, CURRENT_TIMESTAMP),
+('PB202505180004', 'P202505160004', 'AM600-001', '2025-12-01', 300, 1000, 2000, CURRENT_TIMESTAMP),
+('PB202505180005', 'P202505160005', 'LMRV-001', '2027-03-20', 120, 15000, 25000, CURRENT_TIMESTAMP),
+('PB202505180006', 'P202505160006', 'SPD-001', '2028-01-01', 80, 85000, 120000, CURRENT_TIMESTAMP),
+('PB202505180007', 'P202505160007', 'BSU5-001', '2027-09-30', 60, 100000, 150000, CURRENT_TIMESTAMP),
+('PB202505180008', 'P202505160008', 'NM-LS-001', '2030-12-31', 40, 30000, 55000, CURRENT_TIMESTAMP),
+('PB202505180009', 'P202505160009', 'MRT-001', '2028-06-01', 100, 45000, 75000, CURRENT_TIMESTAMP),
+('PB202505180010', 'P202505160010', 'KPE-001', '2030-01-01', 30, 120000, 180000, CURRENT_TIMESTAMP);
+
+INSERT INTO transactions (id_transactions, user_id, total_price, payment_amount, change_amount, status, payment_method, created_at) VALUES
+('T202505210001', 'U202505120001', 75000.00, 100000.00, 25000.00, 'paid', 'cash', '2025-05-21 10:01:00'),
+('T202505210002', 'U202505120002', 129000.00, 130000.00, 1000.00, 'paid', 'qris', '2025-05-21 10:05:00'),
+('T202505210003', 'U202505120003', 56000.00, 60000.00, 4000.00, 'paid', 'cash', '2025-05-21 10:15:00'),
+('T202505210004', 'U202505120004', 90000.00, 100000.00, 10000.00, 'paid', 'cash', '2025-05-21 10:20:00'),
+('T202505210005', 'U202505120005', 45000.00, 50000.00, 5000.00, 'paid', 'qris', '2025-05-21 10:25:00'),
+('T202505210006', 'U202505120006', 210000.00, 210000.00, 0.00, 'paid', 'transfer', '2025-05-21 10:30:00'),
+('T202505210007', 'U202505120007', 100000.00, 150000.00, 50000.00, 'paid', 'cash', '2025-05-21 10:35:00'),
+('T202505210008', 'U202505120008', 38000.00, 40000.00, 2000.00, 'paid', 'cash', '2025-05-21 10:40:00'),
+('T202505210009', 'U202505120009', 63000.00, 70000.00, 7000.00, 'paid', 'qris', '2025-05-21 10:45:00'),
+('T202505210010', 'U202505120010', 111000.00, 120000.00, 9000.00, 'paid', 'cash', '2025-05-21 10:50:00');
+
+INSERT INTO transaction_items (id_transaction_items, transaction_id, product_id, batch_id, quantity, price, subtotal) VALUES
+('TI202505120001', 'T202505120001', 'P202505120001', 'B202505120001', 1, 2500000, 2500000),
+('TI202505120002', 'T202505120002', 'P202505120002', 'B202505120002', 2, 150000, 300000),
+('TI202505120003', 'T202505120003', 'P202505120003', 'B202505120003', 10, 3000, 30000),
+('TI202505120004', 'T202505120004', 'P202505120004', 'B202505120004', 5, 5000, 25000),
+('TI202505120005', 'T202505120005', 'P202505120005', 'B202505120005', 2, 35000, 70000),
+('TI202505120006', 'T202505120006', 'P202505120006', 'B202505120006', 1, 450000, 450000),
+('TI202505120007', 'T202505120007', 'P202505120007', 'B202505120007', 1, 500000, 500000),
+('TI202505120008', 'T202505120008', 'P202505120008', 'B202505120008', 3, 75000, 225000),
+('TI202505120009', 'T202505120009', 'P202505120009', 'B202505120009', 2, 180000, 360000),
+('TI202505120010', 'T202505120010', 'P202505120010', 'B202505120010', 1, 100000, 100000);
+
+INSERT INTO expert_rules 
+(rule_name, condition_sold_min, condition_sold_max, condition_stock_min, condition_stock_max, certainty_factor, recommendation)
+VALUES
+('Slow moving, stok banyak', 0, 10, 100, 10000, 0.9, 'Diskon 20% segera'),
+('Slow moving, stok sedikit', 0, 10, 0, 99, 0.6, 'Diskon ringan 10%'),
+('Fast moving, stok sedikit', 100, 100000, 0, 50, 0.85, 'Tambah stok segera'),
+('Fast moving, stok cukup', 100, 100000, 51, 1000, 0.75, 'Naikkan harga sedikit');
+
+
